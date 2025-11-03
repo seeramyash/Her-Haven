@@ -32,6 +32,10 @@ const port = 3000;
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 
+// OpenRouter (hosted LLM) config
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini"; // set via env for your account
+
 // TTS engine selection
 const TTS_ENGINE = (process.env.TTS_ENGINE || "sapi").toLowerCase(); // azure|piper|sapi
 
@@ -482,6 +486,44 @@ app.post("/websearch", async (req, res) => {
     res.send(result);
   } catch (e) {
     res.status(500).send({ error: e?.message || 'websearch failed' });
+  }
+});
+
+// Proxy endpoint for OpenRouter chat completions (avoids exposing API key to browsers)
+app.post("/openrouter/chat", async (req, res) => {
+  try {
+    if (!OPENROUTER_API_KEY) return res.status(500).send({ error: "OPENROUTER_API_KEY not set on server" });
+
+    const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const prompt = (req.body?.prompt || '').toString();
+    const model = (req.body?.model || OPENROUTER_MODEL).toString();
+
+    const payload = messages.length > 0 ? { model, messages } : {
+      model,
+      messages: [{ role: 'user', content: prompt || 'Hello' }]
+    };
+
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://github.com/seeramyash/Her-Haven',
+        'X-Title': 'Her Haven Backend'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      return res.status(r.status).send({ error: `OpenRouter ${r.status}: ${txt}` });
+    }
+    const data = await r.json();
+    const content = data?.choices?.[0]?.message?.content || '';
+
+    // Optional: map to virtual-gf message format
+    return res.send({ content });
+  } catch (e) {
+    res.status(500).send({ error: e?.message || 'openrouter failed' });
   }
 });
 
