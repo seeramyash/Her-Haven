@@ -18,7 +18,7 @@ export default function ProviderCard({provider, onChat, onPay}){
             <div className="text-sm text-gray-500">{provider.location}</div>
             <div className="flex gap-2">
               <a 
-                href="http://localhost:8002" 
+                href={import.meta.env.VITE_CHAT_URL || '#'} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="px-3 py-1 rounded text-sm transition-colors hover:opacity-90"
