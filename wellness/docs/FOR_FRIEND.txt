@@ -1,0 +1,119 @@
+========================================
+WOMEN'S WELLNESS REPORT
+Quick Start Guide For Your Friend
+========================================
+
+HELLO! 👋
+
+This folder contains the Women's Wellness Report application.
+
+To get it running on your computer, follow these steps:
+
+========================================
+STEP 1: INSTALL PREREQUISITES
+========================================
+
+1. Install Python:
+   → Download from: https://www.python.org/downloads/
+   → IMPORTANT: Check "Add Python to PATH" during installation
+   
+2. Install Node.js:
+   → Download from: https://nodejs.org/
+   → Install the LTS version
+
+3. Restart your computer after installing both
+
+========================================
+STEP 2: RUN SETUP
+========================================
+
+Windows Users:
+--------------
+1. Double-click: setup_windows.bat
+2. Wait for it to finish
+3. Press any key when done
+
+Mac/Linux Users:
+----------------
+1. Open Terminal in this folder
+2. Run: chmod +x setup.sh
+3. Run: ./setup.sh
+
+========================================
+STEP 3: START THE APP
+========================================
+
+Windows Users:
+--------------
+Double-click: start_app_windows.bat
+(That's it! The app will open automatically!)
+
+Mac/Linux Users:
+----------------
+Run: ./start.sh
+
+The app will open in your browser at:
+http://localhost:3000
+
+========================================
+WHAT TO EXPECT
+========================================
+
+You'll see TWO windows open:
+1. One for the backend server
+2. One for the frontend server
+
+Both must stay open while using the app!
+
+The app will automatically open in your browser.
+
+========================================
+FEATURES
+========================================
+
+✓ Track daily wellness metrics
+✓ See trends and correlations
+✓ Get period predictions
+✓ View weekly/monthly reports
+✓ Receive personalized recommendations
+
+========================================
+TROUBLESHOOTING
+========================================
+
+"Python not found"
+→ Reinstall Python and check "Add Python to PATH"
+
+"npm not found"
+→ Install Node.js from nodejs.org
+
+"Port in use"
+→ Close other apps or restart computer
+
+Still having issues?
+→ Read INSTALLATION_INSTRUCTIONS.md
+→ Check SETUP_GUIDE.md
+
+========================================
+IMPORTANT NOTES
+========================================
+
+✓ Keep both terminal windows open
+✓ All your data is stored locally
+✓ No data is sent to external servers
+✓ Your privacy is protected
+
+========================================
+NEED HELP?
+========================================
+
+1. Check INSTALLATION_INSTRUCTIONS.md
+2. Read SETUP_GUIDE.md
+3. See README.md for details
+
+========================================
+
+HAVE FUN TRACKING YOUR WELLNESS! 📊✨🌸
+
+========================================
+

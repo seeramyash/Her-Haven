@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StegoSecura - Complaint Steganography</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/lib/steg.js"></script>
+  </head>
+  <body>
+    <!-- Global Navbar placeholder -->
+    <div id="global-navbar"></div>
+
+    <!-- Header -->
+    <header>
+      <div class="header-content">
+        <i class="fas fa-image header-icon"></i>
+        <h1>
+          <span class="gradient-text-green">StegoSecura</span>
+        </h1>
+      </div>
+      <p class="subtitle">Hide and reveal secret complaints within AI-generated images.</p>
+    </header>
+
+    <!-- Main Content Card -->
+    <div class="main-card">
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('encode')">
+          <i class="fas fa-lock tab-icon"></i>
+          <span>Encode Message</span>
+        </div>
+        <div class="tab" onclick="switchTab('decode')">
+          <i class="fas fa-unlock tab-icon"></i>
+          <span>Decode Message</span>
+        </div>
+      </div>
+
+      <!-- Encode Tab Content -->
+      <div id="encodeContent" class="tab-content">
+        <div class="form-row">
+          <!-- Image Source Selection -->
+          <div class="form-group">
+            <label>Image Source</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="imageSource" value="generate" checked onchange="toggleImageSource()">
+                <span>Generate New</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="imageSource" value="upload" onchange="toggleImageSource()">
+                <span>Upload Image</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- Generate Fields -->
+          <div id="generateFields" class="form-group full-width">
+            <label for="prompt">
+              <i class="fas fa-magic input-icon"></i>
+              Image Prompt
+            </label>
+            <input type="text" id="prompt" placeholder="e.g., a serene lake at dawn">
+          </div>
+
+          <!-- Upload Fields -->
+          <div id="uploadFields" class="form-group full-width hidden">
+            <label for="uploadImageInput">
+              <i class="fas fa-upload input-icon"></i>
+              Upload Image
+            </label>
+            <input type="file" id="uploadImageInput" accept="image/*" onchange="previewUploadedImage()">
+            <div id="uploadPreview" class="hidden" style="margin-top: 1rem;">
+              <img id="uploadPreviewImg" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #e5e7eb;">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+            <!-- Complaint Type field removed -->
+        </div>
+
+
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="complaintDescription">
+              <i class="fas fa-file-alt input-icon"></i>
+              Complaint Details
+            </label>
+            <textarea id="complaintDescription" rows="4" placeholder="Your secret message goes here..."></textarea>
+          </div>
+        </div>
+
+        <button onclick="handleEncode()" class="submit-btn">
+          <i class="fas fa-key"></i> Encode Message
+        </button>
+      </div>
+
+      <!-- Decode Tab Content -->
+      <div id="decodeContent" class="tab-content hidden">
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="decodeImageInput">
+              <i class="fas fa-image input-icon"></i>
+              Upload Image to Decode
+            </label>
+            <input type="file" id="decodeImageInput" accept="image/png,image/jpeg,image/jpg" onchange="decodeImage()">
+          </div>
+        </div>
+
+        <div id="decodedMessageContainer" class="decoded-container hidden">
+          <strong>Decoded Message:</strong>
+          <div id="decodedMessage" class="decoded-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Area -->
+    <div class="results-area">
+      <div id="loading" class="hidden">
+        <div class="spinner"></div>
+        <p>Processing image...</p>
+      </div>
+      <div id="result-container" class="image-container hidden">
+        <img id="result" alt="Generated Image">
+        <button id="downloadBtn" class="download-btn">
+          <i class="fas fa-download"></i> Download Image
+        </button>
+      </div>
+    </div>
+
+    <div id="error-container"></div>
+
+    <script src="/nav.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

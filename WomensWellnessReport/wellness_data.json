@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "date": "2025-11-01",
+      "timestamp": "2025-11-01T09:05:01.664294",
+      "morning_meal": "green tea",
+      "afternoon_meal": "quinoa",
+      "night_meal": "salmon",
+      "morning_stress": 2,
+      "afternoon_stress": 10,
+      "night_stress": 8,
+      "average_stress": 6.666666666666667,
+      "exercise_minutes": 30,
+      "water_intake": 3400,
+      "sleep_hours": 7.0,
+      "sleep_quality": 7,
+      "on_period": true,
+      "symptoms": {
+        "headache": false,
+        "heavy_flow": false,
+        "light_flow": true,
+        "cramping": true,
+        "bloating": false,
+        "mood_swings": true,
+        "fatigue": false,
+        "nausea": true,
+        "back_pain": false,
+        "breast_tenderness": true
+      },
+      "additional_notes": "I have severe cramping, heavy bleeding, and mood swings",
+      "sentiment_score": -0.12,
+      "wellness_score": 69.7,
+      "predicted_energy": 100
+    }
+  ]
+}

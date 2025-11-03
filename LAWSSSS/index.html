@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LegalAI Assistant - AI-Powered Legal Support for Women</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+    <script src="https://unpkg.com/splitting@1.0.6/dist/splitting.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/splitting@1.0.6/dist/splitting.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #314456;
+            --navy-2: #1f2934;
+            --rose: #dfa7a1;
+            --rose-2: #f9d5d1;
+            --cream: #fff8f0;
+            --charcoal: #314456;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #ffffff 0%, #f9d5d1 100%);
+            color: var(--charcoal);
+            position: relative;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(223, 167, 161, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(249, 213, 209, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(49, 68, 86, 0.10) 0%, transparent 50%);
+            animation: backgroundShift 20s ease infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(-20px, -30px) scale(1.1);
+                opacity: 0.8;
+            }
+        }
+        
+        .legal-pattern {
+            background: transparent;
+            position: relative;
+            z-index: 1;
+            padding: 2rem 0;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chat-bubble {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(223, 167, 161, 0.25);
+            max-width: min(100%, 80ch);
+            box-shadow: 0 4px 12px rgba(223, 167, 161, 0.1);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .chat-bubble:hover {
+            box-shadow: 0 8px 20px rgba(223, 167, 161, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .law-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(223, 167, 161, 0.2);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: cardFadeIn 0.6s ease-out backwards;
+        }
+        
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .law-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(223, 167, 161, 0.25);
+            border-color: var(--rose);
+        }
+        
+        .typing-indicator {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gold);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .floating-element {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-reveal.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .message-sent-animation {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: messageEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes messageEnter {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Enhanced heading styles */
+        h2 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            animation: fadeInScale 1s ease-out;
+        }
+        
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Quick action button enhancements */
+        button[onclick*="quickAction"] {
+            position: relative;
+            overflow: hidden;
+            animation: buttonSlideIn 0.5s ease-out backwards;
+        }
+        
+        @keyframes buttonSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        button[onclick*="quickAction"]:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+        
+        button[onclick*="quickAction"]:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        button[onclick*="quickAction"]:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+        
+        button[onclick*="quickAction"]:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+        
+        button[onclick*="quickAction"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(223, 167, 161, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        button[onclick*="quickAction"]:hover::before {
+            left: 100%;
+        }
+        
+        button[onclick*="quickAction"]:hover {
+            transform: translateX(5px) translateY(-2px);
+            border-color: var(--rose) !important;
+        }
+        
+        /* Chat container enhancements */
+        .bg-white.rounded-2xl {
+            animation: containerSlideUp 0.8s ease-out 0.2s backwards;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(223, 167, 161, 0.1);
+        }
+        
+        @keyframes containerSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Send button enhancements */
+        button[onclick="sendMessage()"] {
+            background: linear-gradient(135deg, #dfa7a1 0%, #f9d5d1 100%) !important;
+            color: #314456 !important;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button[onclick="sendMessage()"]::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        button[onclick="sendMessage()"]:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        button[onclick="sendMessage()"]:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 24px rgba(223, 167, 161, 0.4);
+        }
+        
+        /* Input field enhancements */
+        textarea#user-input {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        textarea#user-input:focus {
+            border-color: var(--rose) !important;
+            box-shadow: 0 0 0 3px rgba(223, 167, 161, 0.1) !important;
+            transform: translateY(-1px);
+        }
+        
+        /* Chat header gradient */
+        .bg-gradient-to-r {
+            background: linear-gradient(135deg, #314456 0%, #1f2934 100%) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Global Navbar placeholder -->
+    <div id="global-navbar"></div>
+    <!-- AI Chat Interface -->
+    <section class="legal-pattern min-h-screen flex items-center justify-center">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div class="text-center mb-12 scroll-reveal">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4" style="color: #314456;">
+                    <span class="italic font-serif" style="background: linear-gradient(135deg, #dfa7a1 0%, #f9d5d1 25%, #314456 50%, #dfa7a1 75%, #f9d5d1 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: gradientShift 5s ease infinite;">Intelligent</span> Legal Assistant
+                </h2>
+                <p class="text-xl max-w-3xl mx-auto" style="color: #314456; font-weight: 500;">
+                    Describe your legal situation in your own words. Our AI analyzes your case and provides specific laws, rights, and actionable guidance.
+                </p>
+            </div>
+            
+            <style>
+                @keyframes gradientShift {
+                    0% {
+                        background-position: 0% 50%;
+                    }
+                    50% {
+                        background-position: 100% 50%;
+                    }
+                    100% {
+                        background-position: 0% 50%;
+                    }
+                }
+            </style>
+
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Chat Interface -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                        <div class="bg-gradient-to-r px-6 py-4" style="background: linear-gradient(135deg, #314456 0%, #1f2934 100%);">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                                <span style="color: #f9d5d1; font-weight: 600; font-family: 'Inter', sans-serif;">AI Legal Assistant</span>
+                                <span style="color: rgba(249, 213, 209, 0.7); font-size: 0.875rem; font-weight: 500;">Online</span>
+                            </div>
+                        </div>
+                        
+                        <div id="chat-messages" class="min-h-[50vh] max-h-[70vh] overflow-y-auto p-6 space-y-4 bg-gray-50">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-8 h-8 bg-[var(--navy)] rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-[var(--rose-2)]" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="chat-bubble rounded-lg p-5 md:p-6">
+                                    <p class="text-gray-800 leading-relaxed">Hello! I'm your AI legal assistant. I specialize in women's legal rights and can help you understand your legal situation. What would you like to discuss?</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-200 p-4 bg-white">
+                            <div class="flex space-x-3">
+                                <textarea 
+                                    id="user-input" 
+                                    placeholder="Describe your legal situation... (e.g., 'I'm experiencing workplace discrimination')"
+                                    class="flex-1 resize-none border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:border-transparent"
+                                    rows="2"
+                                ></textarea>
+                                <button 
+                                    onclick="sendMessage()"
+                                    class="px-6 py-3 rounded-lg font-semibold flex items-center space-x-2"
+                                >
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                                    </svg>
+                                    <span>Send</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="space-y-6">
+                    <div class="scroll-reveal">
+                        <h3 class="text-xl font-semibold text-gray-900 mb-4">Quick Legal Topics</h3>
+                        <div class="space-y-3">
+                            <button onclick="quickAction('employment')" class="w-full text-left p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #dfa7a1 0%, #f9d5d1 100%);">
+                                        <svg class="w-5 h-5" style="color: #314456;" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8-1a1 1 0 100 2h2a1 1 0 100-2h-2z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">Employment Rights</h4>
+                                        <p class="text-sm text-gray-600">Discrimination, harassment, equal pay</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button onclick="quickAction('family')" class="w-full text-left p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #f9d5d1 0%, #dfa7a1 100%);">
+                                        <svg class="w-5 h-5" style="color: #314456;" fill="currentColor" viewBox="0 0 20 20">
+20 20">
+                                            <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 011.486.874l-1.5 4.5a1 1 0 01-.745.622l-4.5 1.5a1 1 0 01-1.154-1.154l1.5-4.5a1 1 0 011.154-.622l4.5-1.5a1 1 0 01.745.622l1.5 4.5a1 1 0 01-1.154 1.154l-4.5-1.5a1 1 0 01-.622-.745L4.5 6.5a1 1 0 011.154-.622l4.5-1.5a1 1 0 01.745.622z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">Family Law</h4>
+                                        <p class="text-sm text-gray-600">Divorce, custody, domestic violence</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button onclick="quickAction('maternity')" class="w-full text-left p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #dfa7a1 0%, #f9d5d1 100%);">
+                                        <svg class="w-5 h-5" style="color: #314456;" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">Maternity Rights</h4>
+                                        <p class="text-sm text-gray-600">Pregnancy discrimination, leave rights</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button onclick="quickAction('housing')" class="w-full text-left p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #f9d5d1 0%, #dfa7a1 100%);">
+                                        <svg class="w-5 h-5" style="color: #314456;" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">Housing Rights</h4>
+                                        <p class="text-sm text-gray-600">Discrimination, tenant protections</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scroll-reveal">
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Your Privacy & Security</h3>
+                            <div class="space-y-2 text-sm text-gray-600">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>End-to-end encryption</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Anonymous consultations</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Data never shared</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="/nav.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

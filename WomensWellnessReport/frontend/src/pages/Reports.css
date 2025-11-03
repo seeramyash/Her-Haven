@@ -1,0 +1,68 @@
+/* Styles for parsed HTML reports and recommendations */
+.report-content,
+.recommendations-content {
+  color: #2d1b1b;
+}
+
+.report-content h2,
+.report-content h3,
+.recommendations-content h3,
+.recommendations-content h4 {
+  color: #d4a5a5;
+}
+
+.report-content table,
+.recommendations-content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.report-content table th,
+.recommendations-content table th {
+  background: linear-gradient(135deg, #ffb3b3 0%, #ffc7a3 100%);
+  color: #2d1b1b;
+  padding: 10px;
+}
+
+.report-content table td,
+.recommendations-content table td {
+  padding: 10px;
+  border-bottom: 1px solid #ffe5d9;
+}
+
+.report-content ul,
+.recommendations-content ul {
+  line-height: 1.8;
+  color: #2d1b1b;
+}
+
+.report-content li,
+.recommendations-content li {
+  margin: 8px 0;
+}
+
+.report-content hr,
+.recommendations-content hr {
+  border: none;
+  border-top: 1px solid #ffe5d9;
+  margin: 20px 0;
+}
+
+/* Override any inline styles from backend */
+.report-content [style*="#667eea"],
+.report-content [style*="#764ba2"],
+.report-content [style*="#9B59B6"],
+.report-content [style*="#3498DB"],
+.report-content [style*="#27AE60"],
+.report-content [style*="#E74C3C"],
+.report-content [style*="#F39C12"],
+.recommendations-content [style*="#667eea"],
+.recommendations-content [style*="#764ba2"],
+.recommendations-content [style*="#9B59B6"],
+.recommendations-content [style*="#3498DB"],
+.recommendations-content [style*="#27AE60"],
+.recommendations-content [style*="#E74C3C"],
+.recommendations-content [style*="#F39C12"] {
+  /* These will be handled by backend updates */
+}
+
