@@ -1,4 +1,4 @@
-const OPENROUTER_API_KEY = 'REDACTED'
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || ''
 
 import { generateLocalProvider } from './localGenerator'
 

@@ -58,3 +58,6 @@ logs/
 # Misc
 *.pid
 *.seed
+
+# Project-specific secrets
+LAWSSSS/env.js
