@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
 
-const STEGO_URL = "http://localhost:3001/";
+const STEGO_URL = (import.meta as any).env?.VITE_STEGO_URL || "/";
 
 function App() {
   const [isSignUp, setIsSignUp] = useState(false);
