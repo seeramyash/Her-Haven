@@ -11,28 +11,38 @@ const port = process.env.PORT || 4000;
 // Middleware
 app.use(express.json());
 
-// Enable CORS for chatbot on port 5176, Women's Wellness on port 3001, her-connect on 8001, and CHAT on 8002
+// CORS: allow origins from env (comma-separated), else allow all
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:5176',  // Chatbot
-    'http://localhost:3001',   // Women's Wellness
-    'http://localhost:8001',   // her-connect
-    'http://localhost:8002'    // CHAT
-  ];
-  
-  if (origin && allowedOrigins.includes(origin)) {
+  const envList = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!envList.length) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else if (origin && envList.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
+});
+
+// Dynamic navbar HTML using env-configured URLs
+app.get('/components/navbar.html', (_req, res) => {
+  const WELLNESS = process.env.NAV_WELLNESS_URL || '#';
+  const LAW = process.env.NAV_LAW_URL || '/law/';
+  const HER_CONNECT = process.env.NAV_HER_CONNECT_URL || '#';
+  const CHATBOT = process.env.NAV_CHATBOT_URL || '#';
+  const STEGO = process.env.NAV_STEGO_URL || '/';
+  const html = `<!doctype html>
+<nav class="navbar">
+  <a class="nav-icon" href="${WELLNESS}" title="Wellness Tracker" target="_blank"><i class="fas fa-droplet"></i></a>
+  <a class="nav-icon" href="${LAW}" title="Law Bot"><i class="fas fa-scale-balanced"></i></a>
+  <a class="nav-icon" href="${HER_CONNECT}" title="Her Connect" target="_blank"><i class="fas fa-hands-helping"></i></a>
+  <a class="nav-icon" href="${CHATBOT}" title="Therapy Bot" target="_blank"><i class="fas fa-robot"></i></a>
+  <a class="nav-icon" href="${STEGO}" title="Steganography"><i class="fas fa-image"></i></a>
+</nav>`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
 });
 
 app.use(express.static('public'));
