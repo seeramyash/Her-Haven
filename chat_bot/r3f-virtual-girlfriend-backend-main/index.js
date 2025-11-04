@@ -26,7 +26,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json({ limit: "25mb" }));
 app.use(cors());
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Ollama config (local LLM)
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
@@ -92,6 +92,58 @@ async function listInstalledModels() {
   } catch { return []; }
 }
 
+// Generate messages via OpenRouter (hosted OpenAI-compatible models)
+async function chatViaOpenRouter(userMessage, history = [], imagesBase64 = []) {
+  if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY not set');
+  const wantsVision = Array.isArray(imagesBase64) && imagesBase64.length > 0;
+  const systemPrompt = `You are a virtual girlfriend.
+You must reply ONLY with strict JSON like this shape (no extra text):
+{
+  "messages": [
+    { "text": "...", "facialExpression": "smile|sad|angry|surprised|funnyFace|default", "animation": "Talking_0|Talking_1|Talking_2|Crying|Laughing|Rumba|Idle|Terrified|Angry" }
+  ]
+}
+Return between 1 and 3 messages.
+Keep consistency with the ongoing conversation context that will be provided.`;
+
+  const msgs = [
+    { role: 'system', content: systemPrompt },
+    ...history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })),
+  ];
+
+  if (wantsVision) {
+    const content = [{ type: 'text', text: userMessage || 'Describe this image' }, ...imagesBase64.map(b64 => ({ type: 'input_image', image_url: { url: b64 } }))];
+    msgs.push({ role: 'user', content });
+  } else {
+    msgs.push({ role: 'user', content: userMessage || 'Hello' });
+  }
+
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'https://github.com/seeramyash/Her-Haven',
+      'X-Title': 'Her Haven Backend'
+    },
+    body: JSON.stringify({ model: OPENROUTER_MODEL, messages: msgs })
+  });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`OpenRouter ${r.status}: ${txt}`);
+  }
+  const data = await r.json();
+  const content = data?.choices?.[0]?.message?.content?.trim?.() || '{}';
+  let parsed;
+  try { parsed = JSON.parse(content); } catch (e) {
+    const s = content.indexOf('{'); const eix = content.lastIndexOf('}');
+    if (s !== -1 && eix !== -1 && eix > s) parsed = JSON.parse(content.slice(s, eix + 1)); else throw e;
+  }
+  let messages = parsed.messages || parsed || [];
+  if (!Array.isArray(messages)) messages = [];
+  return messages.slice(0, 3);
+}
+
 async function ensureOllamaUp() {
   try {
     const ok = await fetch(`${OLLAMA_URL}/api/tags`, { method: 'GET' });
@@ -132,6 +184,7 @@ function resolveRequestedModel(requested, images) {
   return { wantsVision, preferred };
 }
 
+/* Ollama disabled for cloud deployment
 async function callOllamaChat(userMessage, history = [], imagesBase64 = [], modelNameOverride = "") {
   // make sure Ollama is running
   await ensureOllamaUp();
@@ -559,44 +612,19 @@ app.post("/chat", async (req, res) => {
     let userMessage = req.body.message;
     const image = req.body.image || ""; // optional single image data URL (backward compat)
     const images = Array.isArray(req.body.images) ? req.body.images : (image ? [image] : []);
-    const audio = req.body.audio || ""; // optional base64 data URL or raw base64
     const requestedModel = (req.body.model || "").toString().toLowerCase(); // 'llama' | 'llava' or explicit
     const sessionId = req.body.sessionId || req.get("x-session-id") || "default";
     const reset = Boolean(req.body.reset);
     if (reset) sessions.delete(sessionId);
-
-    // If audio provided and no text, transcribe via Windows SAPI
-    if (!userMessage && audio) {
-      try {
-        const buf = dataUrlToBuffer(audio) || Buffer.from(audio, "base64");
-        const rawPath = path.resolve(path.join("audios", `input_${Date.now()}.webm`));
-        await fs.writeFile(rawPath, buf);
-        const wavInput = rawPath.replace(/\.webm$/i, ".wav");
-        const cmd = `"${FFMPEG_EXE}" -y -i "${rawPath}" -ar 16000 -ac 1 "${wavInput}"`;
-        await execCommand(cmd).catch(() => {});
-        userMessage = await transcribeViaSapi(wavInput);
-      } catch (e) {
-        console.warn("Audio transcription failed:", e?.message || e);
-      }
-    }
 
     if (!userMessage && images.length === 0) {
       res.send({
         messages: [
           {
             text: "Hey dear... How was your day?",
-            audio: await audioFileToBase64("audios/intro_0.wav"),
-            lipsync: await readJsonTranscript("audios/intro_0.json"),
             facialExpression: "smile",
             animation: "Talking_1",
-          },
-          {
-            text: "I missed you so much... Please don't go for so long!",
-            audio: await audioFileToBase64("audios/intro_1.wav"),
-            lipsync: await readJsonTranscript("audios/intro_1.json"),
-            facialExpression: "sad",
-            animation: "Crying",
-          },
+          }
         ],
       });
       return;
@@ -605,9 +633,9 @@ app.post("/chat", async (req, res) => {
     let messages;
     const history = sessions.get(sessionId) || [];
     try {
-      messages = await callOllamaChat(userMessage, history, images, requestedModel || "llama");
+      messages = await chatViaOpenRouter(userMessage, history, images);
     } catch (e) {
-      console.warn("Ollama failed, using fallback message:", e?.message || e);
+      console.warn("OpenRouter chat failed, using fallback message:", e?.message || e);
       const anims = ["Talking_0","Talking_1","Talking_2","Laughing","Idle"]; // must exist in animations.glb
       const exprs = ["smile","surprised","angry","sad","default","funnyFace"];
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -651,41 +679,7 @@ app.post("/chat", async (req, res) => {
       const picked = pickAnimExprFromText(m.text, m.facialExpression, m.animation);
       m.facialExpression = picked.expr;
       m.animation = picked.anim;
-      const wav = path.join("audios", `message_${i}.wav`);
-      const mp3 = path.join("audios", `message_${i}.mp3`);
-
-      try {
-        // TTS -> WAV via Piper with SAPI fallback
-        await ttsToWav(m.text, wav);
-
-        // Generate lipsync JSON from WAV (absolute paths, resampled if needed)
-        let lipsyncOk = false;
-        try {
-          const { wavAbs } = await lipSyncFromWav(i);
-          lipsyncOk = true;
-        } catch (lipErr) {
-          console.warn("Rhubarb failed, will synthesize fallback mouth cues:", lipErr?.message || lipErr);
-        }
-
-        // Attach assets (prefer WAV for reliability)
-        m.audio = await audioFileToBase64(wav);
-        m.audioMime = "audio/wav";
-
-        // Attach lipsync
-        if (lipsyncOk) {
-          m.lipsync = await readJsonTranscript(path.join("audios", `message_${i}.json`));
-        } else {
-          const dur = await getWavDurationSeconds(path.resolve(wav));
-          m.lipsync = generateFallbackMouthCues(m.text || "", dur || 2.0);
-        }
-      } catch (e) {
-        console.warn(`Failed to generate AV assets for message ${i}:`, e?.message || e);
-        // Provide minimal fallback so frontend still works
-        m.audio = m.audio || ""; // Avatar guards for missing audio
-        m.audioMime = m.audioMime || "audio/wav";
-        const dur = await getWavDurationSeconds(path.resolve(wav));
-        m.lipsync = generateFallbackMouthCues(m.text || "", dur || 2.0);
-      }
+      // No server-side TTS or lipsync; frontend will synthesize voice via Web Speech API
     }
 
     // Update session history (trim to recent exchanges)

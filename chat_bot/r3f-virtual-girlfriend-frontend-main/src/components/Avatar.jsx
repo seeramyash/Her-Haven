@@ -193,6 +193,22 @@ export function Avatar(props) {
       a.addEventListener('waiting', () => a.play().catch(()=>{}));
       a.play().catch(()=>{});
       setAudio(a);
+    } else if (message?.text && 'speechSynthesis' in window) {
+      try {
+        const u = new SpeechSynthesisUtterance(message.text);
+        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+        u.onend = () => { onMessagePlayed(); setAnimation('Idle'); };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (e) {
+        // Fallback: no audio; pop message to keep flow
+        onMessagePlayed();
+        setAnimation('Idle');
+      }
+    } else {
+      // No audio available; pop message so queue continues
+      onMessagePlayed();
+      setAnimation('Idle');
     }
   }, [message, filteredAnimations, animation]);
 

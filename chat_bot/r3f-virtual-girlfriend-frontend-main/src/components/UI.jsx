@@ -21,45 +21,25 @@ export const UI = ({ hidden, ...props }) => {
   };
 
   const startMic = async () => {
-    // Record audio, transcribe to text, and place it in the input (do NOT auto-send)
+    // Use browser SpeechRecognition (no server) to dictate into the input
     if (recording) {
       setRecording(false);
-      recRef.current?.stop();
+      recRef.current?.stop?.();
       return;
     }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Speech recognition not supported in this browser.'); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      const chunks = [];
-      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-      mr.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const audioB64 = reader.result; // data:audio/webm;base64,...
-          const url = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/transcribe';
-          try {
-            const resp = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ audio: audioB64 }),
-            });
-            const json = await resp.json().catch(() => ({}));
-            if (json?.text) {
-              input.current.value = json.text;
-              input.current.focus();
-            }
-          } catch (e) {
-            console.error('transcribe error', e);
-          }
-        };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach(t => t.stop());
+      const r = new SR();
+      r.lang = 'en-US'; r.interimResults = false; r.continuous = false;
+      r.onresult = (e) => {
+        const t = Array.from(e.results).map(x => x[0].transcript).join(' ');
+        input.current.value = t; input.current.focus();
       };
-      recRef.current = mr;
+      r.onend = () => { setRecording(false); };
+      recRef.current = r;
       setRecording(true);
-      mr.start();
-      setTimeout(() => { if (recRef.current && recRef.current.state === 'recording') { startMic(); } }, 15000);
+      r.start();
     } catch (e) {
       console.error('mic error', e);
       setRecording(false);
