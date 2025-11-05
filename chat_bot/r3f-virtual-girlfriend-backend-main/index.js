@@ -194,15 +194,14 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
   contents.push({ role: 'user', parts });
 
   // Candidate models to try in order
-  const candidates = [
+  let candidates = [
     (modelOverride || GEMINI_MODEL),
     'gemini-1.5-flash',
     'gemini-1.5-flash-001',
-    'gemini-1.5-pro', // may require billing
   ].filter(Boolean);
 
-  let lastErrTxt = '';
-  for (const model of candidates) {
+  // Helper to call generateContent with chosen model and API version
+  const tryModel = async (model) => {
     const attempt = async (ver) => {
       const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
       return await fetch(url, {
@@ -213,10 +212,7 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
     };
     let r = await attempt('v1');
     if (r.status === 404) r = await attempt('v1beta');
-    if (!r.ok) {
-      lastErrTxt = await r.text().catch(() => '');
-      continue;
-    }
+    if (!r.ok) return { ok: false, txt: await r.text().catch(() => '') };
     const data = await r.json();
     const partsOut = data?.candidates?.[0]?.content?.parts || [];
     const text = partsOut.map(p => p?.text || '').join(' ').trim();
@@ -228,9 +224,45 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
     }
     let messages = parsed.messages || parsed || [];
     if (!Array.isArray(messages)) messages = [];
-    return messages.slice(0, 3);
+    return { ok: true, messages: messages.slice(0, 3) };
+  };
+
+  // Try preferred list first
+  let lastErrTxt = '';
+  for (const m of candidates) {
+    const res = await tryModel(m);
+    if (res.ok) return res.messages;
+    lastErrTxt = res.txt;
   }
-  throw new Error(`Gemini request failed after model fallbacks: ${lastErrTxt}`);
+
+  // As a fallback, query available models and pick the first supporting generateContent
+  try {
+    const queryVers = ['v1','v1beta'];
+    let listed = [];
+    for (const ver of queryVers) {
+      const url = `https://generativelanguage.googleapis.com/${ver}/models?key=${GEMINI_API_KEY}`;
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const arr = data?.models || [];
+      if (arr.length) { listed = arr; break; }
+    }
+    const names = listed
+      .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => (m.name || '').replace(/^models\//,''));
+    // prefer flash variants
+    candidates = [...new Set([
+      ...names.filter(n => /gemini-1\.5.*flash/i.test(n)),
+      ...names
+    ])];
+    for (const m of candidates) {
+      const res = await tryModel(m);
+      if (res.ok) return res.messages;
+      lastErrTxt = res.txt;
+    }
+  } catch {}
+
+  throw new Error(`Gemini request failed after fallbacks: ${lastErrTxt}`);
 }
 
 // Generate messages via OpenRouter (hosted OpenAI-compatible models)

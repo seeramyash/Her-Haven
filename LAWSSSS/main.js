@@ -8,8 +8,8 @@ let isTyping = false;
 
 // Gemini API Configuration
 const GEMINI_API_KEY = (typeof window !== 'undefined' && window?.env?.GEMINI_API_KEY) ? window.env.GEMINI_API_KEY : '';
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-// Note: 'gemini-pro' is a commonly used model. 'gemini-2.5-flash' might also be valid.
+const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Note: Use v1beta-supported model names like 'gemini-1.5-flash' or 'gemini-1.5-pro'.
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
