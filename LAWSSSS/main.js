@@ -6,10 +6,8 @@
 let legalDatabase = [];
 let isTyping = false;
 
-// Gemini API Configuration
-const GEMINI_API_KEY = (typeof window !== 'undefined' && window?.env?.GEMINI_API_KEY) ? window.env.GEMINI_API_KEY : '';
-const GEMINI_API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-// Note: Use v1beta-supported model names like 'gemini-1.5-flash' or 'gemini-1.5-pro'.
+// Backend API endpoint (server-side proxy hiding API key)
+const API_ENDPOINT = '/api/generate';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -242,29 +240,27 @@ Your response:`;
     };
 
     try {
-        const response = await fetch(GEMINI_API_ENDPOINT, {
+        const response = await fetch(API_ENDPOINT, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: prompt })
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(`Proxy error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
         }
 
         const data = await response.json();
-        if (data && data.candidates && data.candidates.length > 0 &&
-            data.candidates[0].content && data.candidates[0].content.parts &&
-            data.candidates[0].content.parts.length > 0 && data.candidates[0].content.parts[0].text) {
-            return data.candidates[0].content.parts[0].text;
+        if (data && data.text) {
+            return data.text;
+        } else if (typeof data === 'string') {
+            return data;
         } else {
-            return "I'm sorry, I couldn't get a clear response from the AI. Please try rephrasing your question.";
+            return "I'm sorry, I couldn't get a clear response. Please try rephrasing your question.";
         }
     } catch (error) {
-        console.error("Error communicating with Gemini API:", error);
+        console.error("Error communicating with backend API:", error);
         return "I'm experiencing technical difficulties and cannot provide a response right now. Please try again later.";
     }
 }
