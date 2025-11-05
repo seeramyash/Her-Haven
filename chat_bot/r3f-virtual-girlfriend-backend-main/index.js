@@ -172,18 +172,14 @@ async function listInstalledModels() {
 // Generate messages via Gemini (Google Generative Language)
 async function chatViaGemini(userMessage, history = [], imagesBase64 = [], modelOverride = "") {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
-  const model = (modelOverride || GEMINI_MODEL);
-
   const wantsVision = Array.isArray(imagesBase64) && imagesBase64.length > 0;
   const systemPrompt = `You are a virtual girlfriend.\nYou must reply ONLY with strict JSON like this shape (no extra text):\n{\n  "messages": [\n    { "text": "...", "facialExpression": "smile|sad|angry|surprised|funnyFace|default", "animation": "Talking_0|Talking_1|Talking_2|Crying|Laughing|Rumba|Idle|Terrified|Angry" }\n  ]\n}\nReturn between 1 and 3 messages.\nKeep consistency with the ongoing conversation context that will be provided.`;
 
   const contents = [];
-  // Include prior history in Gemini format
   for (const h of (history || [])) {
     const role = h.role === 'assistant' ? 'model' : 'user';
     contents.push({ role, parts: [{ text: h.content || '' }] });
   }
-  // Add current user message with optional images
   const parts = [];
   parts.push({ text: `${systemPrompt}\n\nUSER: ${userMessage || (wantsVision ? 'Describe this image' : 'Hello')}` });
   if (wantsVision) {
@@ -197,36 +193,44 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
   }
   contents.push({ role: 'user', parts });
 
-  // Try v1 first, then v1beta as fallback
-  const attempt = async (ver) => {
-    const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-    const rr = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents })
-    });
-    return rr;
-  };
-  let r = await attempt('v1');
-  if (r.status === 404) {
-    r = await attempt('v1beta');
+  // Candidate models to try in order
+  const candidates = [
+    (modelOverride || GEMINI_MODEL),
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-001',
+    'gemini-1.5-pro', // may require billing
+  ].filter(Boolean);
+
+  let lastErrTxt = '';
+  for (const model of candidates) {
+    const attempt = async (ver) => {
+      const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents })
+      });
+    };
+    let r = await attempt('v1');
+    if (r.status === 404) r = await attempt('v1beta');
+    if (!r.ok) {
+      lastErrTxt = await r.text().catch(() => '');
+      continue;
+    }
+    const data = await r.json();
+    const partsOut = data?.candidates?.[0]?.content?.parts || [];
+    const text = partsOut.map(p => p?.text || '').join(' ').trim();
+    const raw = text || '{}';
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      const s = raw.indexOf('{'); const eix = raw.lastIndexOf('}');
+      if (s !== -1 && eix !== -1 && eix > s) parsed = JSON.parse(raw.slice(s, eix + 1)); else throw e;
+    }
+    let messages = parsed.messages || parsed || [];
+    if (!Array.isArray(messages)) messages = [];
+    return messages.slice(0, 3);
   }
-  if (!r.ok) {
-    const txt = await r.text().catch(() => '');
-    throw new Error(`Gemini ${r.status}: ${txt}`);
-  }
-  const data = await r.json();
-  const partsOut = data?.candidates?.[0]?.content?.parts || [];
-  const text = partsOut.map(p => p?.text || '').join(' ').trim();
-  const raw = text || '{}';
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch (e) {
-    const s = raw.indexOf('{'); const eix = raw.lastIndexOf('}');
-    if (s !== -1 && eix !== -1 && eix > s) parsed = JSON.parse(raw.slice(s, eix + 1)); else throw e;
-  }
-  let messages = parsed.messages || parsed || [];
-  if (!Array.isArray(messages)) messages = [];
-  return messages.slice(0, 3);
+  throw new Error(`Gemini request failed after model fallbacks: ${lastErrTxt}`);
 }
 
 // Generate messages via OpenRouter (hosted OpenAI-compatible models)
