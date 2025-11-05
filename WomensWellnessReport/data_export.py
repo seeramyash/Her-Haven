@@ -1,6 +1,10 @@
 import pandas as pd
 import json
-import streamlit as st
+# Streamlit is optional in API runtime
+try:
+    import streamlit as st  # type: ignore
+except Exception:
+    st = None  # type: ignore
 from datetime import datetime
 import io
 
@@ -129,7 +133,9 @@ def create_summary_report(data):
     return "\n".join(report)
 
 def display_export_page(data):
-    """Display the data export page in Streamlit"""
+    """Display the data export page in Streamlit (no-op if Streamlit absent)"""
+    if st is None:
+        return
     st.markdown('<p class="sub-header">📥 Export Your Wellness Data</p>', unsafe_allow_html=True)
     
     if not data or 'entries' not in data or len(data['entries']) == 0:
