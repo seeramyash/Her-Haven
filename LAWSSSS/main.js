@@ -251,11 +251,13 @@ Your response:`;
             throw new Error(`Proxy error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
         }
 
-        const data = await response.json();
+        const raw = await response.text();
+        let data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (_) { /* non-JSON */ }
         if (data && data.text) {
             return data.text;
-        } else if (typeof data === 'string') {
-            return data;
+        } else if (raw) {
+            return raw;
         } else {
             return "I'm sorry, I couldn't get a clear response. Please try rephrasing your question.";
         }
