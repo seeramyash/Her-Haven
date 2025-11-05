@@ -9,7 +9,16 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     DATABASE_URL = 'sqlite:///wellness.db'
 
-engine = create_engine(DATABASE_URL, echo=False)
+# Ensure SQLAlchemy understands postgres URLs
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+# Configure engine with sensible defaults
+if DATABASE_URL.startswith('sqlite'):
+    engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+else:
+    engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

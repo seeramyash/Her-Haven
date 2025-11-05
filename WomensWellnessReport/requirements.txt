@@ -5,6 +5,8 @@
 flask>=3.0.0
 flask-cors>=4.0.0
 
+gunicorn>=21.2.0  # Production WSGI server for Render
+
 # Data Processing
 pandas>=2.3.3
 numpy>=2.3.4
@@ -16,7 +18,7 @@ psycopg2-binary>=2.9.11  # Optional: Only needed if using PostgreSQL
 # Machine Learning
 scikit-learn>=1.7.2
 xgboost>=3.1.1
-tensorflow>=2.20.0
+# tensorflow removed for lighter deploys; LSTM features will be disabled if TF is unavailable
 textblob>=0.19.0
 
 # Visualization (for reports)

@@ -4,9 +4,18 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import xgboost as xgb
 from textblob import TextBlob
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+
+# TensorFlow is optional in production (Render); gracefully degrade if unavailable
+TF_AVAILABLE = True
+try:
+    import tensorflow as tf  # noqa: F401
+    from tensorflow import keras
+    from tensorflow.keras import layers
+except Exception:
+    TF_AVAILABLE = False
+    keras = None
+    layers = None
+
 import pickle
 import os
 import warnings
@@ -49,14 +58,15 @@ class WellnessPredictor:
             print(f"Could not load XGBoost model: {e}")
         
         try:
-            lstm_path = os.path.join(self.model_dir, 'lstm_model.h5')
-            scaler_path = os.path.join(self.model_dir, 'lstm_scaler.pkl')
-            
-            if os.path.exists(lstm_path) and os.path.exists(scaler_path):
-                self.lstm_model = keras.models.load_model(lstm_path)
-                with open(scaler_path, 'rb') as f:
-                    self.lstm_scaler = pickle.load(f)
-                self.is_lstm_trained = True
+            if TF_AVAILABLE:
+                lstm_path = os.path.join(self.model_dir, 'lstm_model.h5')
+                scaler_path = os.path.join(self.model_dir, 'lstm_scaler.pkl')
+                
+                if os.path.exists(lstm_path) and os.path.exists(scaler_path):
+                    self.lstm_model = keras.models.load_model(lstm_path)
+                    with open(scaler_path, 'rb') as f:
+                        self.lstm_scaler = pickle.load(f)
+                    self.is_lstm_trained = True
         except Exception as e:
             print(f"Could not load LSTM model: {e}")
     
@@ -70,7 +80,7 @@ class WellnessPredictor:
             print(f"Could not save XGBoost model: {e}")
         
         try:
-            if self.lstm_model is not None and self.is_lstm_trained and self.lstm_scaler is not None:
+            if TF_AVAILABLE and self.lstm_model is not None and self.is_lstm_trained and self.lstm_scaler is not None:
                 lstm_path = os.path.join(self.model_dir, 'lstm_model.h5')
                 scaler_path = os.path.join(self.model_dir, 'lstm_scaler.pkl')
                 
@@ -332,6 +342,8 @@ class WellnessPredictor:
         Train LSTM model for time-series prediction
         Predicts future wellness scores based on historical patterns
         """
+        if not TF_AVAILABLE:
+            return None
         if len(historical_data) < 7:
             return None
         
@@ -401,7 +413,7 @@ class WellnessPredictor:
     
     def predict_next_wellness(self, recent_entries):
         """Predict next day's wellness score using LSTM"""
-        if self.lstm_model is None or self.lstm_scaler is None or len(recent_entries) < 3:
+        if not TF_AVAILABLE or self.lstm_model is None or self.lstm_scaler is None or len(recent_entries) < 3:
             return None
         
         try:

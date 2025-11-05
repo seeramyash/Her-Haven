@@ -1,9 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Allow REACT_APP_API_URL to be either the origin (e.g. https://api.onrender.com)
+// or the full base path (e.g. https://api.onrender.com/api)
+let baseURL = process.env.REACT_APP_API_URL;
+if (baseURL) {
+  baseURL = baseURL.replace(/\/$/, '');
+  if (!baseURL.endsWith('/api')) baseURL += '/api';
+} else {
+  baseURL = 'http://localhost:5000/api';
+}
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: womens-wellness-api
+    env: python
+    rootDir: WomensWellnessReport
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -k sync -b 0.0.0.0:$PORT api_server:app
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: womens-wellness-db
+          property: connectionString
+
+  - type: static
+    name: womens-wellness-frontend
+    rootDir: WomensWellnessReport/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: build
+    autoDeploy: true
+    envVars:
+      # REACT_APP_API_URL can be the API origin; frontend will append "/api" if missing
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: womens-wellness-api
+          property: url
+
+# Managed PostgreSQL database
+# The API will receive DATABASE_URL automatically from this database via envVars above
+# Note: Render will provision credentials and rotate them if needed.
+databases:
+  - name: womens-wellness-db
+    plan: free
+    postgresMajorVersion: 16
