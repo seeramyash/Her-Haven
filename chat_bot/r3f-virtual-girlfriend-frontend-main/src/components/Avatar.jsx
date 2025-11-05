@@ -165,6 +165,34 @@ export function Avatar(props) {
     }
   };
 
+  // Simple, local fallback mouth-cue generator (when no phonemes from API)
+  const genFallbackMouthCues = (text = '', durationSec = 2.0) => {
+    const letters = text
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, '')
+      .split('');
+    const toViseme = (a, b) => {
+      const pair = (a || '') + (b || '');
+      if (pair.startsWith('th')) return 'H';
+      if (/^[pbm]$/.test(a)) return 'A';
+      if (/^[fv]$/.test(a)) return 'G';
+      if (/^[o]$/.test(a)) return 'E';
+      if (/^[uuw]$/.test(a)) return 'F';
+      if (/^[a]$/.test(a)) return 'D';
+      if (/^[eiiy]$/.test(a)) return 'C';
+      if (/^[kgxqg]$/.test(a)) return 'B';
+      if (a === ' ') return 'X';
+      return 'C';
+    };
+    const raw = [];
+    for (let i = 0; i < letters.length; i++) raw.push(toViseme(letters[i], letters[i + 1]));
+    const seq = [];
+    for (const v of raw) if (seq.length === 0 || seq[seq.length - 1] !== v) seq.push(v);
+    const n = Math.max(1, seq.length);
+    const step = durationSec / n;
+    return { mouthCues: seq.map((v, i) => ({ start: i * step, end: (i + 1) * step, value: v })) };
+  };
+
   // React to new message: set animation/facial expression/audio safely
   useEffect(() => {
     console.log(message);
@@ -184,6 +212,15 @@ export function Avatar(props) {
       const blob = b64toBlob(message.audio, mime);
       const url = blob ? URL.createObjectURL(blob) : `data:${mime};base64,${message.audio}`;
       const a = new Audio(url);
+      // If no lipsync from API, compute a local fallback once metadata (duration) is known
+      const ensureFallback = () => {
+        try {
+          if (!message.lipsync && isFinite(a.duration) && a.duration > 0.2) {
+            setLipsync(genFallbackMouthCues(message.text || '', Math.min(a.duration, 20)));
+          }
+        } catch {}
+      };
+      a.addEventListener('loadedmetadata', ensureFallback, { once: true });
       a.addEventListener('ended', () => {
         onMessagePlayed();
         setAnimation('Idle');
@@ -195,11 +232,24 @@ export function Avatar(props) {
       setAudio(a);
     } else if (message?.text && 'speechSynthesis' in window) {
       try {
-        const u = new SpeechSynthesisUtterance(message.text);
-        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
-        u.onend = () => { onMessagePlayed(); setAnimation('Idle'); };
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
+        const speak = () => {
+          const u = new SpeechSynthesisUtterance(message.text);
+          u.rate = 1.0; u.pitch = 1.05; u.volume = 1.0;
+          // Prefer a female English voice if available
+          const voices = window.speechSynthesis.getVoices();
+          const preferred = voices.find(v => /Zira|Jenny|Samantha|Joanna|Olivia|Aria|en\-US/i.test(v.name))
+            || voices.find(v => /en\-US/i.test(v.lang))
+            || voices[0];
+          if (preferred) u.voice = preferred;
+          u.onend = () => { onMessagePlayed(); setAnimation('Idle'); };
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
+        };
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => { try { speak(); } catch {} };
+        } else {
+          speak();
+        }
       } catch (e) {
         // Fallback: no audio; pop message to keep flow
         onMessagePlayed();

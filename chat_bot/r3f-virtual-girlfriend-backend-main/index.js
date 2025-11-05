@@ -44,7 +44,7 @@ const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini"; /
 // Gemini config (preferred)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 // Flash is cheaper and supports vision; Pro may require billing
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash"; // avoid '-latest' which 404s on REST
 
 // TTS engine selection
 const TTS_ENGINE = (process.env.TTS_ENGINE || "sapi").toLowerCase(); // azure|piper|sapi
@@ -197,19 +197,25 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
   let candidates = [
     (modelOverride || GEMINI_MODEL),
     'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
     'gemini-1.5-flash-001',
+    'gemini-1.5-pro',
   ].filter(Boolean);
 
   // Helper to call generateContent with chosen model and API version
   const tryModel = async (model) => {
     const attempt = async (ver) => {
-      const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent`;
       return await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY,
+        },
         body: JSON.stringify({ contents })
       });
     };
+    // Try v1 first then v1beta
     let r = await attempt('v1');
     if (r.status === 404) r = await attempt('v1beta');
     if (!r.ok) return { ok: false, txt: await r.text().catch(() => '') };
@@ -240,8 +246,8 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
     const queryVers = ['v1','v1beta'];
     let listed = [];
     for (const ver of queryVers) {
-      const url = `https://generativelanguage.googleapis.com/${ver}/models?key=${GEMINI_API_KEY}`;
-      const resp = await fetch(url);
+      const url = `https://generativelanguage.googleapis.com/${ver}/models`;
+      const resp = await fetch(url, { headers: { 'x-goog-api-key': GEMINI_API_KEY } });
       if (!resp.ok) continue;
       const data = await resp.json();
       const arr = data?.models || [];
