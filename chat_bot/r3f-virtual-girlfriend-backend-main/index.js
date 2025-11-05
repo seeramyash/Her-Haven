@@ -44,7 +44,7 @@ const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini"; /
 // Gemini config (preferred)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 // Flash is cheaper and supports vision; Pro may require billing
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
 
 // TTS engine selection
 const TTS_ENGINE = (process.env.TTS_ENGINE || "sapi").toLowerCase(); // azure|piper|sapi
@@ -197,12 +197,20 @@ async function chatViaGemini(userMessage, history = [], imagesBase64 = [], model
   }
   contents.push({ role: 'user', parts });
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents })
-  });
+  // Try v1 first, then v1beta as fallback
+  const attempt = async (ver) => {
+    const url = `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    const rr = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents })
+    });
+    return rr;
+  };
+  let r = await attempt('v1');
+  if (r.status === 404) {
+    r = await attempt('v1beta');
+  }
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
     throw new Error(`Gemini ${r.status}: ${txt}`);
