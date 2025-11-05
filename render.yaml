@@ -13,7 +13,7 @@ services:
           name: womens-wellness-db
           property: connectionString
 
-  - type: static
+  - type: static_site
     name: womens-wellness-frontend
     rootDir: WomensWellnessReport/frontend
     buildCommand: npm ci && npm run build
@@ -27,9 +27,6 @@ services:
           name: womens-wellness-api
           property: url
 
-# Managed PostgreSQL database
-# The API will receive DATABASE_URL automatically from this database via envVars above
-# Note: Render will provision credentials and rotate them if needed.
 databases:
   - name: womens-wellness-db
     plan: free
