@@ -372,6 +372,7 @@ Keep consistency with the ongoing conversation context that will be provided.
   if (!Array.isArray(messages)) messages = [];
   return messages.slice(0, 3);
 }
+*/
 
 async function ttsViaAzure(text, wavPath) {
   if (!AZURE_TTS_KEY || !AZURE_TTS_REGION) {
