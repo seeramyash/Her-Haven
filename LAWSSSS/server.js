@@ -29,6 +29,7 @@ app.post('/api/generate', async (req, res) => {
     }
 
     const prompt = message; // already composed in client
+    console.log('proxy> request', { model: MODEL, promptPreview: prompt.slice(0, 120) });
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     const body = {
@@ -49,15 +50,20 @@ app.post('/api/generate', async (req, res) => {
       body: JSON.stringify(body),
     });
 
-    const data = await r.json();
+    const raw = await r.text();
     if (!r.ok) {
-      return res.status(r.status).json({ error: data?.error || data || 'Upstream error' });
+      console.error('proxy> upstream error', r.status, raw);
+      // Try parse error for consistency
+      let parsedErr = null; try { parsedErr = raw ? JSON.parse(raw) : null; } catch {}
+      return res.status(r.status).json(parsedErr?.error ? parsedErr : { error: raw || 'Upstream error' });
     }
 
+    let data = null; try { data = raw ? JSON.parse(raw) : null; } catch {}
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('proxy> success');
     return res.json({ text });
   } catch (e) {
-    console.error('Proxy error', e);
+    console.error('proxy> exception', e);
     return res.status(500).json({ error: 'Proxy failed' });
   }
 });
