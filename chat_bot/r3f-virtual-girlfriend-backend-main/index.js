@@ -41,6 +41,11 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini"; // set via env for your account
 
+// Gemini config (preferred)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+// Flash is cheaper and supports vision; Pro may require billing
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+
 // TTS engine selection
 const TTS_ENGINE = (process.env.TTS_ENGINE || "sapi").toLowerCase(); // azure|piper|sapi
 
@@ -162,6 +167,58 @@ async function listInstalledModels() {
     const j = await r.json();
     return (j?.models || []).map(m => m.name);
   } catch { return []; }
+}
+
+// Generate messages via Gemini (Google Generative Language)
+async function chatViaGemini(userMessage, history = [], imagesBase64 = [], modelOverride = "") {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
+  const model = (modelOverride || GEMINI_MODEL);
+
+  const wantsVision = Array.isArray(imagesBase64) && imagesBase64.length > 0;
+  const systemPrompt = `You are a virtual girlfriend.\nYou must reply ONLY with strict JSON like this shape (no extra text):\n{\n  "messages": [\n    { "text": "...", "facialExpression": "smile|sad|angry|surprised|funnyFace|default", "animation": "Talking_0|Talking_1|Talking_2|Crying|Laughing|Rumba|Idle|Terrified|Angry" }\n  ]\n}\nReturn between 1 and 3 messages.\nKeep consistency with the ongoing conversation context that will be provided.`;
+
+  const contents = [];
+  // Include prior history in Gemini format
+  for (const h of (history || [])) {
+    const role = h.role === 'assistant' ? 'model' : 'user';
+    contents.push({ role, parts: [{ text: h.content || '' }] });
+  }
+  // Add current user message with optional images
+  const parts = [];
+  parts.push({ text: `${systemPrompt}\n\nUSER: ${userMessage || (wantsVision ? 'Describe this image' : 'Hello')}` });
+  if (wantsVision) {
+    for (const b64url of imagesBase64) {
+      try {
+        const m = (b64url.split(';')[0].split(':')[1]) || 'image/png';
+        const data = (b64url.includes(',')) ? b64url.split(',')[1] : b64url;
+        parts.push({ inline_data: { mime_type: m, data } });
+      } catch {}
+    }
+  }
+  contents.push({ role: 'user', parts });
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents })
+  });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`Gemini ${r.status}: ${txt}`);
+  }
+  const data = await r.json();
+  const partsOut = data?.candidates?.[0]?.content?.parts || [];
+  const text = partsOut.map(p => p?.text || '').join(' ').trim();
+  const raw = text || '{}';
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) {
+    const s = raw.indexOf('{'); const eix = raw.lastIndexOf('}');
+    if (s !== -1 && eix !== -1 && eix > s) parsed = JSON.parse(raw.slice(s, eix + 1)); else throw e;
+  }
+  let messages = parsed.messages || parsed || [];
+  if (!Array.isArray(messages)) messages = [];
+  return messages.slice(0, 3);
 }
 
 // Generate messages via OpenRouter (hosted OpenAI-compatible models)
@@ -706,9 +763,16 @@ app.post("/chat", async (req, res) => {
     let messages;
     const history = sessions.get(sessionId) || [];
     try {
-      messages = await chatViaOpenRouter(userMessage, history, images);
+      if (GEMINI_API_KEY) {
+        const modelName = (requestedModel === 'llava') ? (process.env.GEMINI_VISION_MODEL || GEMINI_MODEL) : GEMINI_MODEL;
+        messages = await chatViaGemini(userMessage, history, images, modelName);
+      } else if (OPENROUTER_API_KEY) {
+        messages = await chatViaOpenRouter(userMessage, history, images);
+      } else {
+        throw new Error('No LLM key configured');
+      }
     } catch (e) {
-      console.warn("OpenRouter chat failed, using fallback message:", e?.message || e);
+      console.warn("LLM chat failed, using fallback message:", e?.message || e);
       const anims = ["Talking_0","Talking_1","Talking_2","Laughing","Idle"]; // must exist in animations.glb
       const exprs = ["smile","surprised","angry","sad","default","funnyFace"];
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
