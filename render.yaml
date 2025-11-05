@@ -1,7 +1,7 @@
 services:
   - type: web
     name: womens-wellness-api
-    env: python
+    runtime: python
     rootDir: WomensWellnessReport
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 2 -k sync -b 0.0.0.0:$PORT api_server:app
@@ -13,14 +13,14 @@ services:
           name: womens-wellness-db
           property: connectionString
 
-  - type: static_site
+  - type: web
     name: womens-wellness-frontend
+    runtime: static
     rootDir: WomensWellnessReport/frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: build
     autoDeploy: true
     envVars:
-      # REACT_APP_API_URL can be the API origin; frontend will append "/api" if missing
       - key: REACT_APP_API_URL
         fromService:
           type: web
