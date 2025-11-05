@@ -20,12 +20,6 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: build
     autoDeploy: true
-    envVars:
-      - key: REACT_APP_API_URL
-        fromService:
-          type: web
-          name: womens-wellness-api
-          property: url
 
 databases:
   - name: womens-wellness-db
