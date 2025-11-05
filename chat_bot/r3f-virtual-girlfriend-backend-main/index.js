@@ -12,6 +12,11 @@ dotenv.config();
 // In-memory session store: sessionId -> [{ role: 'user'|'assistant', content: string }]
 const sessions = new Map();
 
+// ElevenLabs TTS
+const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY || "";
+const ELEVEN_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; // Rachel (default)
+const ELEVEN_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_turbo_v2_5";
+
 const dataUrlToBuffer = (dataUrl) => {
   if (!dataUrl) return null;
   const idx = dataUrl.indexOf(",");
@@ -61,6 +66,73 @@ const FFMPEG_EXE = process.env.FFMPEG_EXE || "ffmpeg";
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
+});
+
+async function elevenlabsTTS(text, { voiceId = ELEVEN_VOICE_ID, outputFormat = "mp3_44100_128" } = {}) {
+  if (!ELEVEN_API_KEY) throw new Error("ELEVENLABS_API_KEY not set");
+  // 1) Try timestamps endpoint (JSON with base64 audio + phoneme/word timings)
+  try {
+    const urlTs = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`;
+    const body = {
+      text,
+      model_id: ELEVEN_MODEL_ID,
+      // Ask for phoneme-level timings when available
+      timestamp_type: "phoneme",
+      // Some tenants require output_format when requesting JSON
+      // Many accounts return { audio, alignment: { phoneme_timestamps, word_timestamps } }
+    };
+    const r = await fetch(urlTs, {
+      method: "POST",
+      headers: {
+        "xi-api-key": ELEVEN_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) {
+      const j = await r.json();
+      const audioB64 = j.audio || j.audio_base64 || j.audio_b64 || "";
+      const phonemes = j.alignment?.phoneme_timestamps || j.phoneme_timestamps || null;
+      const words = j.alignment?.word_timestamps || j.word_timestamps || null;
+      if (audioB64) return { audioBase64: audioB64, phonemes, words };
+    }
+  } catch {}
+
+  // 2) Fallback to classic audio endpoint (audio only)
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+  const r2 = await fetch(url, {
+    method: "POST",
+    headers: {
+      "xi-api-key": ELEVEN_API_KEY,
+      "Content-Type": "application/json",
+      "Accept": "audio/mpeg",
+    },
+    body: JSON.stringify({ text, model_id: ELEVEN_MODEL_ID, output_format: outputFormat }),
+  });
+  if (!r2.ok) {
+    const txt = await r2.text().catch(() => "");
+    throw new Error(`ElevenLabs ${r2.status}: ${txt}`);
+  }
+  const buf = await r2.arrayBuffer();
+  return { audioBase64: Buffer.from(buf).toString("base64"), phonemes: null, words: null };
+}
+
+// Proxy TTS endpoint for frontend: returns audio (data URL) and optional timestamps
+app.post("/tts/elevenlabs", async (req, res) => {
+  try {
+    const text = (req.body?.text || '').toString();
+    const voiceId = (req.body?.voiceId || ELEVEN_VOICE_ID).toString();
+    const format = (req.body?.format || 'mp3_44100_128').toString();
+    if (!text) return res.status(400).send({ error: 'text required' });
+    if (!ELEVEN_API_KEY) return res.status(500).send({ error: 'ELEVENLABS_API_KEY not configured' });
+
+    const { audioBase64, phonemes, words } = await elevenlabsTTS(text, { voiceId, outputFormat: format });
+    const dataUrl = `data:audio/mpeg;base64,${audioBase64}`;
+    res.send({ audio: dataUrl, phonemes, words, voiceId });
+  } catch (e) {
+    res.status(500).send({ error: e?.message || 'tts failed' });
+  }
 });
 
 // Ensure audios folder exists at startup
