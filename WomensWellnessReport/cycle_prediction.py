@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
-import streamlit as st
+# Streamlit is optional in API runtime
+try:
+    import streamlit as st  # type: ignore
+except Exception:
+    st = None  # type: ignore
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
@@ -123,7 +127,9 @@ def predict_symptom_likelihood(data):
     return symptom_likelihoods
 
 def display_cycle_forecast(data, ml_predictor):
-    """Display cycle prediction and forecast page"""
+    """Display cycle prediction and forecast page (Streamlit UI). No-op if Streamlit absent."""
+    if st is None:
+        return
     st.markdown('<p class="sub-header">🔮 Menstrual Cycle Forecast</p>', unsafe_allow_html=True)
     
     if not data or 'entries' not in data or len(data['entries']) == 0:

@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
-import streamlit as st
+# Streamlit is optional in API runtime
+try:
+    import streamlit as st  # type: ignore
+except Exception:
+    st = None  # type: ignore
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
@@ -54,7 +58,9 @@ def compare_months(df):
     return changes
 
 def display_comparative_analytics(data):
-    """Display comparative analytics dashboard"""
+    """Display comparative analytics dashboard (Streamlit UI). No-op if Streamlit absent."""
+    if st is None:
+        return
     st.markdown('<p class="sub-header">📊 Comparative Analytics</p>', unsafe_allow_html=True)
     
     if not data or 'entries' not in data or len(data['entries']) < 14:

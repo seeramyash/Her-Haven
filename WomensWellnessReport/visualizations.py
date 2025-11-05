@@ -3,11 +3,17 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
-import streamlit as st
+# Streamlit is optional in API runtime
+try:
+    import streamlit as st  # type: ignore
+except Exception:
+    st = None  # type: ignore
 from datetime import datetime, timedelta
 
 def create_wellness_dashboard(df):
-    """Create comprehensive wellness dashboard with interactive charts"""
+    """Create comprehensive wellness dashboard with interactive charts (Streamlit UI)."""
+    if st is None:
+        return
     
     st.markdown("### 📊 Your Wellness Overview")
     
@@ -185,7 +191,9 @@ def create_wellness_dashboard(df):
         st.plotly_chart(fig_water, use_container_width=True)
 
 def create_trend_charts(df):
-    """Create advanced trend analysis charts"""
+    """Create advanced trend analysis charts (Streamlit UI)."""
+    if st is None:
+        return
     
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date')
