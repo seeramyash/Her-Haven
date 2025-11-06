@@ -1,5 +1,7 @@
 import React from 'react'
 
+const CHAT_URL = import.meta.env.VITE_CHAT_URL || 'https://chat-les0.onrender.com/'
+
 export default function ProviderCard({provider, onChat, onPay}){
   return (
     <div className="border rounded-lg p-4 bg-white shadow-sm">
@@ -18,9 +20,8 @@ export default function ProviderCard({provider, onChat, onPay}){
             <div className="text-sm text-gray-500">{provider.location}</div>
             <div className="flex gap-2">
               <a 
-                href={import.meta.env.VITE_CHAT_URL || '#'} 
-                target="_blank" 
-                rel="noopener noreferrer"
+                href={CHAT_URL}
+                target="_self"
                 className="px-3 py-1 rounded text-sm transition-colors hover:opacity-90"
                 style={{background: 'linear-gradient(135deg, #f9d5d1 0%, #dfa7a1 100%)', color: 'white'}}
               >
