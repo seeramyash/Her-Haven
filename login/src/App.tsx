@@ -4,7 +4,8 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
 
-const STEGO_URL = (import.meta as any).env?.VITE_STEGO_URL || "/";
+// Base URL of Stego server (used if no redirect param is present)
+const STEGO_BASE = (import.meta as any).env?.VITE_STEGO_URL || '';
 
 function App() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -28,12 +29,29 @@ function App() {
           email,
           createdAt: Date.now(),
         });
-        window.location.href = STEGO_URL;
       } else {
         // --- Sign in ---
         await signInWithEmailAndPassword(auth, email, pw);
-        window.location.href = STEGO_URL;
       }
+
+      // After successful auth, redirect via Stego to set session cookie
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get('redirect');
+
+      let targetHref = '';
+      if (redirectParam) {
+        // Use the redirect param from Stego guard and call Stego's /auth/callback
+        const callbackBase = new URL('/auth/callback', redirectParam).toString();
+        targetHref = `${callbackBase}?auth=1&redirect=${encodeURIComponent(redirectParam)}`;
+      } else {
+        // Fallback to configured STEGO_BASE (must be absolute origin)
+        const base = STEGO_BASE || 'https://stego-v7mi.onrender.com';
+        const callbackBase = new URL('/auth/callback', base).toString();
+        const defaultNext = new URL('/', base).toString();
+        targetHref = `${callbackBase}?auth=1&redirect=${encodeURIComponent(defaultNext)}`;
+      }
+
+      window.location.href = targetHref;
     } catch (err: any) {
       alert(err.message);
     }
