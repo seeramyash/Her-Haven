@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
 const API_VERSION = process.env.GEMINI_API_VERSION || 'v1beta';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,6 +17,20 @@ app.use(express.static(__dirname));
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get('/api/models', async (_req, res) => {
+  try {
+    if (!GEMINI_API_KEY) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' });
+    const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models?key=${GEMINI_API_KEY}`;
+    const r = await fetch(url);
+    const raw = await r.text();
+    let data = null; try { data = raw ? JSON.parse(raw) : null; } catch {}
+    if (!r.ok) return res.status(r.status).json(data || { error: raw || 'Upstream error' });
+    return res.json(data);
+  } catch (e) {
+    return res.status(500).json({ error: 'List models failed' });
+  }
 });
 
 app.post('/api/generate', async (req, res) => {
@@ -32,58 +46,53 @@ app.post('/api/generate', async (req, res) => {
     const prompt = message; // already composed in client
     console.log('proxy> request', { model: MODEL, promptPreview: prompt.slice(0, 120) });
 
-    const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const baseUrl = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
+    const candidates = Array.from(new Set([
+      MODEL,
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-pro-latest',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-pro',
+      'gemini-1.0-pro-latest',
+      'gemini-1.0-pro',
+    ]));
+
     const body = {
       contents: [
         {
           parts: [
-            {
-              text: prompt,
-            },
+            { text: prompt },
           ],
         },
       ],
+      generationConfig: { temperature: 0.2 },
     };
 
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const raw = await r.text();
-    if (!r.ok) {
-      console.error('proxy> upstream error', r.status, raw);
-      // If model not found, try a fallback model automatically
-      if (r.status === 404) {
-        const altModel = MODEL.includes('flash') ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
-        const altUrl = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${altModel}:generateContent?key=${GEMINI_API_KEY}`;
-        console.log('proxy> retrying with', altModel);
-        const r2 = await fetch(altUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const raw2 = await r2.text();
-        if (!r2.ok) {
-          console.error('proxy> upstream error (fallback)', r2.status, raw2);
-          let parsedErr2 = null; try { parsedErr2 = raw2 ? JSON.parse(raw2) : null; } catch {}
-          return res.status(r2.status).json(parsedErr2?.error ? parsedErr2 : { error: raw2 || 'Upstream error' });
-        }
-        let data2 = null; try { data2 = raw2 ? JSON.parse(raw2) : null; } catch {}
-        const text2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log('proxy> success (fallback)');
-        return res.json({ text: text2 });
+    let lastStatus = 0;
+    let lastRaw = '';
+    for (const model of candidates) {
+      const url = `${baseUrl}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      console.log('proxy> trying model', model);
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const raw = await r.text();
+      if (!r.ok) {
+        lastStatus = r.status; lastRaw = raw;
+        console.error('proxy> upstream error', r.status, raw);
+        // Try next candidate
+        continue;
       }
-      // Try parse error for consistency
-      let parsedErr = null; try { parsedErr = raw ? JSON.parse(raw) : null; } catch {}
-      return res.status(r.status).json(parsedErr?.error ? parsedErr : { error: raw || 'Upstream error' });
+      let data = null; try { data = raw ? JSON.parse(raw) : null; } catch {}
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (text) {
+        console.log('proxy> success with', model);
+        return res.json({ text, model });
+      }
+      // If empty, keep trying
+      lastStatus = 200; lastRaw = raw;
     }
 
-    let data = null; try { data = raw ? JSON.parse(raw) : null; } catch {}
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('proxy> success');
-    return res.json({ text });
+    return res.status(lastStatus || 502).json({ error: lastRaw || 'No model produced a response' });
   } catch (e) {
     console.error('proxy> exception', e);
     return res.status(500).json({ error: 'Proxy failed' });
