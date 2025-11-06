@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
-const API_VERSION = process.env.GEMINI_API_VERSION || 'v1beta';
+const MODEL = process.env.GEMINI_MODEL || 'models/gemini-2.0-flash';
+const API_VERSION = process.env.GEMINI_API_VERSION || 'v1';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -46,16 +46,16 @@ app.post('/api/generate', async (req, res) => {
     const prompt = message; // already composed in client
     console.log('proxy> request', { model: MODEL, promptPreview: prompt.slice(0, 120) });
 
-    const baseUrl = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
+    const root = `https://generativelanguage.googleapis.com/${API_VERSION}`;
+    const toPath = (m) => m.startsWith('models/') ? m : `models/${m}`;
     const candidates = Array.from(new Set([
       MODEL,
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro',
-      'gemini-pro',
-      'gemini-1.0-pro-latest',
-      'gemini-1.0-pro',
+      'models/gemini-2.5-pro-preview-06-05',
+      'models/gemini-2.5-pro-preview-05-06',
+      'models/gemini-2.5-flash-preview-05-20',
+      'models/gemini-2.5-flash-lite-preview-06-17',
+      'models/gemini-2.0-flash-001',
+      'models/gemini-2.0-flash',
     ]));
 
     const body = {
@@ -72,8 +72,8 @@ app.post('/api/generate', async (req, res) => {
     let lastStatus = 0;
     let lastRaw = '';
     for (const model of candidates) {
-      const url = `${baseUrl}/${model}:generateContent?key=${GEMINI_API_KEY}`;
-      console.log('proxy> trying model', model);
+      const url = `${root}/${toPath(model)}:generateContent?key=${GEMINI_API_KEY}`;
+      console.log('proxy> trying model', toPath(model));
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const raw = await r.text();
       if (!r.ok) {
