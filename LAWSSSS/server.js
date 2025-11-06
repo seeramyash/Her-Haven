@@ -7,6 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const API_VERSION = process.env.GEMINI_API_VERSION || 'v1';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +32,7 @@ app.post('/api/generate', async (req, res) => {
     const prompt = message; // already composed in client
     console.log('proxy> request', { model: MODEL, promptPreview: prompt.slice(0, 120) });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     const body = {
       contents: [
         {
