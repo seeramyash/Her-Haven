@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 
@@ -10,6 +11,15 @@ const port = process.env.PORT || 4000;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
+// Disable caching so Back button won't show protected pages
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
 
 // CORS: allow origins from env (comma-separated), else allow all
 app.use((req, res, next) => {
@@ -26,10 +36,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Dynamic navbar HTML using env-configured URLs
+// Dynamic navbar HTML using production URLs (hide Login & Framer; open in same tab)
 app.get('/components/navbar.html', (_req, res) => {
-  const FRAMER = process.env.NAV_FRAMER_URL || 'https://peaceful-community-154152.framer.app/';
-  const LOGIN = process.env.NAV_LOGIN_URL || 'https://her-haven.onrender.com';
   const WELLNESS = process.env.NAV_WELLNESS_URL || 'https://womenswellnessreports.onrender.com';
   const LAW = process.env.NAV_LAW_URL || 'https://law-bot-iy5m.onrender.com';
   const HER_CONNECT = process.env.NAV_HER_CONNECT_URL || 'https://connect-xptr.onrender.com';
@@ -37,8 +45,6 @@ app.get('/components/navbar.html', (_req, res) => {
   const STEGO = process.env.NAV_STEGO_URL || '/';
   const html = `<!doctype html>
 <nav class="navbar">
-  <a class="nav-icon" href="${FRAMER}" title="Framer Site" target="_self"><i class="fas fa-globe"></i></a>
-  <a class="nav-icon" href="${LOGIN}" title="Login" target="_self"><i class="fas fa-user"></i></a>
   <a class="nav-icon" href="${WELLNESS}" title="Wellness Tracker" target="_self"><i class="fas fa-droplet"></i></a>
   <a class="nav-icon" href="${LAW}" title="Law Bot" target="_self"><i class="fas fa-scale-balanced"></i></a>
   <a class="nav-icon" href="${HER_CONNECT}" title="Her Connect" target="_self"><i class="fas fa-hands-helping"></i></a>
@@ -47,6 +53,21 @@ app.get('/components/navbar.html', (_req, res) => {
 </nav>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
+});
+
+// Auth guard (after CORS, before static)
+const LOGIN_URL = process.env.NAV_LOGIN_URL || 'https://her-haven.onrender.com';
+app.use((req, res, next) => {
+  const bypasses = ['/health', '/components/navbar.html', '/global/navbar.css', '/nav.js', '/lib/', '/favicon', '/auth/callback', '/logout'];
+  if (bypasses.some(p => req.path === p || req.path.startsWith(p))) return next();
+  const isAsset = /\.(css|js|png|jpg|jpeg|svg|ico|map|txt)$/i.test(req.path);
+  if (isAsset) return next();
+  const authed = req.headers.cookie && req.headers.cookie.includes('hh_auth=1');
+  if (!authed) {
+    const redirect = encodeURIComponent(`${req.protocol}://${req.headers.host}${req.originalUrl}`);
+    return res.redirect(302, `${LOGIN_URL}?redirect=${redirect}`);
+  }
+  next();
 });
 
 app.use(express.static('public'));
@@ -58,6 +79,21 @@ app.get('/health', (_req, res) => {
 
 // Serve the LAWSSSS static site under /law (this is the main Law Bot UI)
 app.use('/law', express.static(path.join(__dirname, '..', 'LAWSSSS')));
+
+// Authentication callbacks
+app.get('/auth/callback', (req, res) => {
+  const { auth, token, redirect } = req.query;
+  if (auth === '1' || token) {
+    res.cookie('hh_auth', '1', { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 });
+    return res.redirect(302, redirect || '/');
+  }
+  return res.status(400).json({ ok: false, error: 'Missing auth parameters' });
+});
+
+app.get('/logout', (req, res) => {
+  res.clearCookie('hh_auth', { httpOnly: true, secure: true, sameSite: 'lax' });
+  return res.redirect(302, LOGIN_URL);
+});
 
 // Stability AI configuration
 const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
