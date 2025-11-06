@@ -47,6 +47,11 @@ app.get('/components/navbar.html', (_req, res) => {
 
 app.use(express.static('public'));
 
+// Simple health check for Render
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 // Serve the LAWSSSS static site under /law (this is the main Law Bot UI)
 app.use('/law', express.static(path.join(__dirname, '..', 'LAWSSSS')));
 
@@ -108,6 +113,7 @@ app.post('/generate-image', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+const host = '0.0.0.0';
+app.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}`);
 });
