@@ -28,18 +28,22 @@ app.use((req, res, next) => {
 
 // Dynamic navbar HTML using env-configured URLs
 app.get('/components/navbar.html', (_req, res) => {
-  const WELLNESS = process.env.NAV_WELLNESS_URL || '#';
-  const LAW = process.env.NAV_LAW_URL || '/law/';
-  const HER_CONNECT = process.env.NAV_HER_CONNECT_URL || '#';
-  const CHATBOT = process.env.NAV_CHATBOT_URL || '#';
+  const FRAMER = process.env.NAV_FRAMER_URL || 'https://peaceful-community-154152.framer.app/';
+  const LOGIN = process.env.NAV_LOGIN_URL || 'https://her-haven.onrender.com';
+  const WELLNESS = process.env.NAV_WELLNESS_URL || 'https://womenswellnessreports.onrender.com';
+  const LAW = process.env.NAV_LAW_URL || 'https://law-bot-iy5m.onrender.com';
+  const HER_CONNECT = process.env.NAV_HER_CONNECT_URL || 'https://connect-xptr.onrender.com';
+  const CHATBOT = process.env.NAV_CHATBOT_URL || 'https://chat-bot-3xrm.onrender.com';
   const STEGO = process.env.NAV_STEGO_URL || '/';
   const html = `<!doctype html>
 <nav class="navbar">
-  <a class="nav-icon" href="${WELLNESS}" title="Wellness Tracker" target="_blank"><i class="fas fa-droplet"></i></a>
-  <a class="nav-icon" href="${LAW}" title="Law Bot"><i class="fas fa-scale-balanced"></i></a>
-  <a class="nav-icon" href="${HER_CONNECT}" title="Her Connect" target="_blank"><i class="fas fa-hands-helping"></i></a>
-  <a class="nav-icon" href="${CHATBOT}" title="Therapy Bot" target="_blank"><i class="fas fa-robot"></i></a>
-  <a class="nav-icon" href="${STEGO}" title="Steganography"><i class="fas fa-image"></i></a>
+  <a class="nav-icon" href="${FRAMER}" title="Framer Site" target="_self"><i class="fas fa-globe"></i></a>
+  <a class="nav-icon" href="${LOGIN}" title="Login" target="_self"><i class="fas fa-user"></i></a>
+  <a class="nav-icon" href="${WELLNESS}" title="Wellness Tracker" target="_self"><i class="fas fa-droplet"></i></a>
+  <a class="nav-icon" href="${LAW}" title="Law Bot" target="_self"><i class="fas fa-scale-balanced"></i></a>
+  <a class="nav-icon" href="${HER_CONNECT}" title="Her Connect" target="_self"><i class="fas fa-hands-helping"></i></a>
+  <a class="nav-icon" href="${CHATBOT}" title="Chat Bot" target="_self"><i class="fas fa-robot"></i></a>
+  <a class="nav-icon" href="${STEGO}" title="Steganography" target="_self"><i class="fas fa-image"></i></a>
 </nav>`;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
