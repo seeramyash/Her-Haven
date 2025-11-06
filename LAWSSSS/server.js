@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-const API_VERSION = process.env.GEMINI_API_VERSION || 'v1';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+const API_VERSION = process.env.GEMINI_API_VERSION || 'v1beta';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,6 +54,27 @@ app.post('/api/generate', async (req, res) => {
     const raw = await r.text();
     if (!r.ok) {
       console.error('proxy> upstream error', r.status, raw);
+      // If model not found, try a fallback model automatically
+      if (r.status === 404) {
+        const altModel = MODEL.includes('flash') ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+        const altUrl = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${altModel}:generateContent?key=${GEMINI_API_KEY}`;
+        console.log('proxy> retrying with', altModel);
+        const r2 = await fetch(altUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const raw2 = await r2.text();
+        if (!r2.ok) {
+          console.error('proxy> upstream error (fallback)', r2.status, raw2);
+          let parsedErr2 = null; try { parsedErr2 = raw2 ? JSON.parse(raw2) : null; } catch {}
+          return res.status(r2.status).json(parsedErr2?.error ? parsedErr2 : { error: raw2 || 'Upstream error' });
+        }
+        let data2 = null; try { data2 = raw2 ? JSON.parse(raw2) : null; } catch {}
+        const text2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        console.log('proxy> success (fallback)');
+        return res.json({ text: text2 });
+      }
       // Try parse error for consistency
       let parsedErr = null; try { parsedErr = raw ? JSON.parse(raw) : null; } catch {}
       return res.status(r.status).json(parsedErr?.error ? parsedErr : { error: raw || 'Upstream error' });
