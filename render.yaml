@@ -21,6 +21,30 @@ services:
     staticPublishPath: build
     autoDeploy: true
 
+  # MSC: CHAT (Node/Express + Socket.IO)
+  - type: web
+    name: msc-chat
+    runtime: node
+    plan: free
+    rootDir: msc/CHAT
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # MSC: her-connect (Vite React, Static Site)
+  - type: web
+    name: msc-her-connect
+    runtime: static
+    plan: free
+    rootDir: msc/her-connect
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+
 databases:
   - name: womens-wellness-db
     plan: free

@@ -101,6 +101,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Health check for Render
+app.get('/health', (req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 // Handle file uploads
 app.post('/upload', upload.single('image'), (req, res) => {
     if (req.file) {
