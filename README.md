@@ -2,7 +2,7 @@
 
 A one-stop monorepo for women’s health, wellness, safety, and self‑improvement. This repository aggregates multiple apps and services (web frontends, ML/Streamlit apps, utilities, and experiments) into a single codebase.
 
-##DEMO
+## DEMO
 stego(login)- https://stego-v7mi.onrender.com
 Chat bot- https://chat-bot-3xrm.onrender.com
 haven bot- https://chat-bot-3xrm.onrender.com
